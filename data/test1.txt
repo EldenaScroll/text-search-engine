@@ -1,1 +1,1 @@
-sdasdada a aad as asd a adadwqda s adad a a dad 
+Contest rating systems can trace their heritage back to the Elo system. Elo was devised for 2-player games, with rating updates based on whether a player wins, loses or draws. Starting in 1960, it was adopted by the chess community to numerically estimate the skills of players based on whom they won or lost against.

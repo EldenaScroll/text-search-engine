@@ -10,7 +10,8 @@ func LoadDocuments(path string) ([]string, error){
 		if e != nil { return e}
 		// skip directories
 		if d.IsDir() { return nil}
-
+		//keep only txt files
+		if filepath.Ext(s) != ".txt" {return nil}
 		content, err := os.ReadFile(s)
 		if err != nil {return err}
 
