@@ -1,14 +1,9 @@
 package main
 
-import (
-	"fmt"
-	"log"
-	"time"
-
+import ("fmt";"log";"time"; "os";"bufio";
 	"github.com/EldenaScroll/text-search-engine/pkg/crawler"
 	"github.com/EldenaScroll/text-search-engine/pkg/index"
 	"github.com/EldenaScroll/text-search-engine/pkg/tokenizer"
-	//"github.com/EldenaScroll/text-search-engine/pkg/index"
 )
 
 func main() {
@@ -19,7 +14,7 @@ func main() {
 	stopWords, err := tokenizer.LoadStopWords(stopWordsPath)
 	if err != nil {log.Fatal(err)}
 
-	files, err := crawler.LoadDocuments(dataPath)
+	files, filenames, err := crawler.LoadDocuments(dataPath)
 
 	if err != nil {log.Fatal(err)}
 	fmt.Printf("Loaded %d documents in %v\n", len(files), time.Since(start))
@@ -43,6 +38,27 @@ func main() {
 			fmt.Print(idx,"\n")
 		}
 		fmt.Printf("Total setup time: %v\n", time.Since(start))
+		scanner := bufio.NewScanner(os.Stdin)
+
+		for {
+			fmt.Print("\nSearch (or exit to quit)-> ")
+			if !scanner.Scan(){break}
+			query := scanner.Text()
+			if query == "exit" {break}
+			queryTokens := tokenizer.Tokenize(query)
+			if len(queryTokens) == 0 {continue}
+
+			searchTerm := queryTokens[0]
+			matchedIDs := idx.Search(searchTerm)
+			if len(matchedIDs) == 0 {fmt.Print("Not Found") }
+
+			for _, id := range matchedIDs{
+				if id < len(filenames){
+					fmt.Printf("- %s\n", filenames[id])
+				}
+			}
+
+		}
 	}
 	
 	

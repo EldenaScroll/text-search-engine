@@ -16,3 +16,7 @@ func (idx *Index) Add(docID int, tokens []string) {
 	}
 
 }
+
+func (idx *Index) Search(word string) []int{
+	return idx.store[word]
+}
