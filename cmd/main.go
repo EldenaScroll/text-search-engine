@@ -48,8 +48,14 @@ func main() {
 			queryTokens := tokenizer.Tokenize(query)
 			if len(queryTokens) == 0 {continue}
 
-			searchTerm := queryTokens[0]
-			matchedIDs := idx.Search(searchTerm)
+			var searchTokens []string
+
+			for _, t := range queryTokens {
+				if _, isStopWord := stopWords[t]; !isStopWord {
+					searchTokens = append(searchTokens, t)
+				}
+			}
+			matchedIDs := idx.Search(searchTokens)
 			if len(matchedIDs) == 0 {fmt.Print("Not Found") }
 
 			for _, id := range matchedIDs{
