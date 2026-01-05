@@ -13,6 +13,7 @@ import (
 )
 
 func main() {
+	indexPath := "index.gob"
 	dataPath := "./data"
 	stopWordsPath := "./stop-words-english.json"
 	start := time.Now()
@@ -22,7 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	files, filenames, err := crawler.LoadDocuments(dataPath)
+	files, filenames, modTimes, err := crawler.LoadDocuments(dataPath)
 
 	if err != nil {
 		log.Fatal(err)
@@ -30,9 +31,22 @@ func main() {
 	fmt.Printf("Loaded %d documents in %v\n", len(files), time.Since(start))
 
 	idx := index.NewIndex()
+	_, err = os.Stat(indexPath)
+	indexLoaded := false
 
-	if len(files) > 0 {
+	if err == nil {
+		err := idx.Load(indexPath)
+		if err != nil {log.Fatal(err)}
+		if idx.IsStale(filenames, modTimes) {
+			fmt.Println("Changes detected. Rebuilding index...")
+			idx = index.NewIndex()
+		} else {
+			fmt.Println("Index is up to date.")
+			indexLoaded = true
 
+		}
+	} 
+	if !indexLoaded{
 		for docID, content := range files {
 			tokens := tokenizer.Tokenize(content)
 
@@ -43,49 +57,53 @@ func main() {
 				}
 
 			}
-			fmt.Print(cleanTokens, "\n")
-			idx.Add(docID, cleanTokens)
-			fmt.Print(idx, "\n")
+			idx.Add(docID, filenames[docID], cleanTokens, modTimes[docID])
 		}
-		fmt.Printf("Total setup time: %v\n", time.Since(start))
-		scanner := bufio.NewScanner(os.Stdin)
-
-		for {
-			fmt.Print("\nSearch (or exit to quit)-> ")
-			if !scanner.Scan() {
-				break
-			}
-			query := scanner.Text()
-			if query == "exit" {
-				break
-			}
-			queryTokens := tokenizer.Tokenize(query)
-			if len(queryTokens) == 0 {
-				continue
-			}
-
-			var searchTokens []string
-
-			for _, t := range queryTokens {
-				if _, isStopWord := stopWords[t]; !isStopWord {
-					searchTokens = append(searchTokens, t)
-				}
-			}
-			matchedIDs := idx.Search(searchTokens)
-			if len(matchedIDs) == 0 {
-				fmt.Print("Not Found")
-			}
-
-			for i, result := range matchedIDs {
-				if i >= 10 {
-					break
-				}
-				if result.DocID < len(filenames) {
-					fmt.Printf("%d. %s (Score: %.2f)\n", i+1, filenames[result.DocID], result.Score)
-				}
-			}
-
+		if err := idx.Save(indexPath); err != nil {
+			log.Printf("Warning: Failed to save index: %v", err)
+		} else {
+			fmt.Println("Index saved to disk.")
 		}
 	}
+	fmt.Printf("Total setup time: %v\n", time.Since(start))
+	scanner := bufio.NewScanner(os.Stdin)
 
+	for {
+		fmt.Print("\nSearch (or exit to quit)-> ")
+		if !scanner.Scan() {
+			break
+		}
+		query := scanner.Text()
+		if query == "exit" {
+			break
+		}
+		queryTokens := tokenizer.Tokenize(query)
+		if len(queryTokens) == 0 {
+			continue
+		}
+
+		var searchTokens []string
+
+		for _, t := range queryTokens {
+			if _, isStopWord := stopWords[t]; !isStopWord {
+				searchTokens = append(searchTokens, t)
+			}
+		}
+		matchedIDs := idx.Search(searchTokens)
+		if len(matchedIDs) == 0 {
+			fmt.Print("Not Found")
+		}
+
+		for i, result := range matchedIDs {
+			if i >= 5 {
+				break
+			}
+			if result.DocID < len(filenames) {
+				snippet := index.ExtractSnippet(files[result.DocID], searchTokens[0])
+				fmt.Printf("%d. %s (Score: %.2f)\n", i+1, filenames[result.DocID], result.Score)
+				fmt.Printf("    %s\n\n", snippet)
+			}
+		}
+
+	}
 }
